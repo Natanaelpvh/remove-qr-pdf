@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <title>Remover páginas com QR Code</title>
+
+  <!--
+    Bibliotecas utilizadas:
+
+    - pdf.js (PDF.js): Responsável por renderizar páginas PDF no navegador.
+    - pdf-lib: Biblioteca para manipulação de arquivos PDF (criação, cópia de páginas, etc).
+    - jsQR: Detecta e decodifica QR Codes em imagens.
+  -->
+  <script src="https://unpkg.com/pdfjs-dist@3.8.162/build/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 700px;
+      margin: 20px auto;
+      padding: 0 15px;
+      background-color: #fafafa;
+      color: #333;
+    }
+
+    h2 {
+      color: #2c3e50;
+    }
+
+    input[type="file"] {
+      display: inline-block;
+      padding: 10px 12px;
+      border: 2px solid #4CAF50;
+      border-radius: 6px;
+      background-color: #f9f9f9;
+      color: #333;
+      cursor: pointer;
+      transition: border-color 0.3s ease;
+    }
+
+    input[type="file"]:hover {
+      border-color: #45a049;
+    }
+
+    input[type="file"]::file-selector-button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background-color 0.3s ease;
+    }
+
+    input[type="file"]::file-selector-button:hover {
+      background-color: #45a049;
+    }
+
+    button {
+      margin-left: 10px;
+      padding: 10px 20px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.3s ease;
+    }
+
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    button:hover:enabled {
+      background-color: #2980b9;
+    }
+
+    #log {
+      white-space: pre-wrap;
+      background: #f0f0f0;
+      padding: 10px;
+      height: 200px;
+      overflow-y: auto;
+      margin-top: 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    #downloadLink {
+      display: inline-block;
+      margin-top: 15px;
+      padding: 10px 16px;
+      background-color: #2ecc71;
+      color: white;
+      text-decoration: none;
+      border-radius: 6px;
+      transition: background-color 0.3s ease;
+    }
+
+    #downloadLink:hover {
+      background-color: #27ae60;
+    }
+  </style>
+</head>
+<body>
+  <h2>Remover páginas com QR Code do PDF</h2>
+
+  <input type="file" id="inputPdf" accept="application/pdf" />
+  <button id="processBtn" disabled>Processar PDF</button>
+  <div id="log"></div>
+  <a id="downloadLink" style="display:none;" download="pdf_sem_qrcode.pdf">Baixar PDF sem QR Codes</a>
+
+  <script>
+    // Configura o worker do PDF.js
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@3.8.162/build/pdf.worker.min.js';
+
+    const inputPdf = document.getElementById('inputPdf');
+    const processBtn = document.getElementById('processBtn');
+    const log = document.getElementById('log');
+    const downloadLink = document.getElementById('downloadLink');
+
+    /**
+     * Evento executado ao selecionar um arquivo PDF.
+     *
+     * Habilita o botão de processamento caso um arquivo seja selecionado
+     * e exibe o nome do arquivo no log. Oculta o link de download.
+     */
+    inputPdf.addEventListener('change', () => {
+      processBtn.disabled = inputPdf.files.length === 0;
+      log.textContent = inputPdf.files.length ? `Arquivo selecionado: ${inputPdf.files[0].name}\n` : '';
+      downloadLink.style.display = 'none';
+    });
+
+    /**
+     * Evento executado ao clicar no botão "Processar PDF".
+     *
+     * - Carrega o PDF selecionado.
+     * - Renderiza cada página no canvas.
+     * - Detecta QR Codes usando a biblioteca jsQR.
+     * - Gera novo PDF contendo apenas páginas sem QR Codes.
+     * - Disponibiliza um link para download do novo arquivo.
+     *
+     * @async
+     * @returns {Promise<void>}
+     */
+    processBtn.addEventListener('click', async () => {
+      processBtn.disabled = true;
+      log.textContent += 'Carregando PDF...\n';
+
+      const file = inputPdf.files[0];
+
+      // Faz duas cópias do ArrayBuffer para evitar "desanexação"
+      const originalBuffer = await file.arrayBuffer();
+      const bufferForPdfJs = originalBuffer.slice(0); // Leitura com PDF.js
+      const bufferForPdfLib = originalBuffer.slice(0); // Edição com PDF-lib
+
+      /**
+       * Carrega o PDF com pdf.js para renderização.
+       */
+      const pdfDoc = await pdfjsLib.getDocument({ data: bufferForPdfJs }).promise;
+      log.textContent += `PDF carregado com ${pdfDoc.numPages} páginas.\n`;
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      const paginasSemQR = [];
+
+      /**
+       * Itera por cada página, renderiza e tenta detectar QR Code.
+       */
+      for (let i = 1; i <= pdfDoc.numPages; i++) {
+        log.textContent += `Analisando página ${i}...\n`;
+
+        const page = await pdfDoc.getPage(i);
+        const viewport = page.getViewport({ scale: 3 });
+
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+
+        await page.render({ canvasContext: ctx, viewport }).promise;
+
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const qrCode = jsQR(imageData.data, imageData.width, imageData.height);
+
+        if (qrCode) {
+          log.textContent += `→ QR Code detectado na página ${i}: ${qrCode.data}\n`;
+        } else {
+          paginasSemQR.push(i - 1); // índice zero-based
+        }
+      }
+
+      /**
+       * Verifica se ao menos uma página pode ser mantida.
+       */
+      if (paginasSemQR.length === 0) {
+        log.textContent += '\nTodas as páginas contêm QR Code. Nada para salvar.';
+        processBtn.disabled = false;
+        return;
+      }
+
+      try {
+        /**
+         * Cria um novo PDF contendo apenas páginas sem QR Code.
+         */
+        const pdfLibDoc = await PDFLib.PDFDocument.load(bufferForPdfLib);
+        const novoPdf = await PDFLib.PDFDocument.create();
+        const paginasCopiadas = await novoPdf.copyPages(pdfLibDoc, paginasSemQR);
+        paginasCopiadas.forEach(p => novoPdf.addPage(p));
+        const pdfBytes = await novoPdf.save();
+
+        /**
+         * Gera link de download para o novo PDF.
+         */
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+
+        if (downloadLink.href) {
+          URL.revokeObjectURL(downloadLink.href);
+        }
+
+        downloadLink.href = url;
+        downloadLink.download = 'pdf_sem_qrcode.pdf';
+        downloadLink.style.display = 'inline-block';
+        downloadLink.textContent = `Baixar PDF sem QR Codes (${paginasSemQR.length} páginas)`;
+
+        log.textContent += '✅ PDF final criado com sucesso!\n';
+      } catch (error) {
+        log.textContent += `❌ Erro ao gerar PDF: ${error.message}\n`;
+      }
+
+      processBtn.disabled = false;
+    });
+  </script>
+</body>
+</html>
