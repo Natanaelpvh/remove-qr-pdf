@@ -2,6 +2,8 @@
 
 Este é um aplicativo web simples e eficiente que **remove automaticamente páginas de um arquivo PDF que contenham QR Codes**. Ele roda **100% localmente no navegador**, sem enviar seus dados para nenhum servidor.
 
+---
+
 ## 🚀 Funcionalidades
 
 - 📄 Processa arquivos PDF direto do seu computador
@@ -10,21 +12,28 @@ Este é um aplicativo web simples e eficiente que **remove automaticamente pági
 - 💾 Gera um novo PDF para download
 - 🔒 Totalmente offline — privacidade garantida
 
+---
+
 ## 🛠 Tecnologias usadas
 
-- [PDF.js](https://mozilla.github.io/pdf.js/) – para renderizar PDFs
-- [pdf-lib](https://pdf-lib.js.org/) – para criar/editar arquivos PDF
-- [jsQR](https://github.com/cozmo/jsQR) – para detectar QR Codes
+Este projeto foi desenvolvido com:
+
+- 🌐 **HTML5**, **CSS3** e **JavaScript Puro**
+- 📚 [PDF.js](https://mozilla.github.io/pdf.js/) – para renderizar PDFs
+- 🧱 [pdf-lib](https://pdf-lib.js.org/) – para criar/editar arquivos PDF
+- 🔍 [jsQR](https://github.com/cozmo/jsQR) – para detectar QR Codes
+
+---
 
 ## 📸 Captura de tela
 
 ![screenshot](assets/screenshot.png) <!-- opcional, se você colocar uma imagem -->
 
+---
+
 ## 📦 Como usar
 
 Este projeto roda totalmente localmente, direto no navegador. Não é necessário instalar nada, nem backend.
-
----
 
 ### 🧪 Modo 1: Executar no navegador (usuários finais)
 
@@ -73,3 +82,18 @@ code .
 git add .
 git commit -m "feat: nova funcionalidade ou melhoria"
 git push origin nome-da-sua-branch
+```
+
+---
+
+## 🧑‍💻 Autor
+
+Desenvolvido por **Natanael**  
+💬 Contato: [rnh.personalizados@gmail.com]  
+📍 Brasil
+
+---
+
+## 📄 Licença
+
+Este projeto está licenciado sob os termos da licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
